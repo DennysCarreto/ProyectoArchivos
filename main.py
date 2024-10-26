@@ -8,6 +8,7 @@ from datetime import datetime
 class ExtractorGIF:
     def __init__(self):
         self.archivo_datos = "datos_gif.json"
+        self.archivo_log = "cambios_gif.log"
         self.datos_gif = {}
         
     def leer_datos_gif(self, ruta_archivo):
@@ -134,9 +135,41 @@ class ExtractorGIF:
             with open(self.archivo_datos, 'r', encoding='utf-8') as f:
                 self.datos_gif = json.load(f)
 
+    def registrar_cambio(self, ruta_archivo, clave, valor_anterior, valor_nuevo):
+        """Registra un cambio en el archivo de log"""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        nombre_archivo = os.path.basename(ruta_archivo)
+        
+        entrada_log = (
+            f"[{timestamp}] Archivo: {nombre_archivo}\n"
+            f"Campo modificado: {clave}\n"
+            f"Valor anterior: {valor_anterior}\n"
+            f"Valor nuevo: {valor_nuevo}\n"
+            f"Ruta completa: {ruta_archivo}\n"
+            f"{'-'*50}\n"
+        )
+        
+        with open(self.archivo_log, 'a', encoding='utf-8') as f:
+            f.write(entrada_log)
+
     def actualizar_datos_gif(self, ruta_archivo, clave, valor):
         if ruta_archivo in self.datos_gif:
+            valor_anterior = self.datos_gif[ruta_archivo].get(clave, "No disponible")
             self.datos_gif[ruta_archivo][clave] = valor
+            
+            # Agregar información del cambio al historial
+            if 'historial_cambios' not in self.datos_gif[ruta_archivo]:
+                self.datos_gif[ruta_archivo]['historial_cambios'] = []
+            
+            cambio = {
+                'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'campo': clave,
+                'valor_anterior': valor_anterior,
+                'valor_nuevo': valor
+            }
+            
+            self.datos_gif[ruta_archivo]['historial_cambios'].append(cambio)
+            self.registrar_cambio(ruta_archivo, clave, valor_anterior, valor)
             self.guardar_datos()
 
 class Aplicacion(tk.Tk):
@@ -209,7 +242,7 @@ class Aplicacion(tk.Tk):
 
         ttk.Button(frame_botones, text="Agregar directorio", command=self.agregar_directorio).pack(side=tk.LEFT, padx=5)
         ttk.Button(frame_botones, text="Actualizar datos", command=self.actualizar_datos).pack(side=tk.LEFT, padx=5)
-        ttk.Button(frame_botones, text="Acerca de", command=self.mostrar_acerca_de).pack(side=tk.RIGHT, padx=5)
+        # ttk.Button(frame_botones, text="Acerca de", command=self.mostrar_acerca_de).pack(side=tk.RIGHT, padx=5)
 
         self.arbol.bind("<<TreeviewSelect>>", self.al_seleccionar)
         self.actualizar_arbol()
@@ -272,20 +305,60 @@ class Aplicacion(tk.Tk):
         frame_grupo.pack(fill=tk.X, padx=10, pady=5)
 
         for clave, valor in datos.items():
-            frame = ttk.Frame(frame_grupo)
-            frame.pack(fill=tk.X, pady=2)
+            if clave != 'historial_cambios':  # No mostrar el historial como campo editable
+                frame = ttk.Frame(frame_grupo)
+                frame.pack(fill=tk.X, pady=2)
 
-            ttk.Label(frame, text=f"{clave}:", width=20).pack(side=tk.LEFT)
-            
-            if isinstance(valor, list):
-                valor_str = ", ".join(map(str, valor)) if valor else "Ninguno"
-            else:
-                valor_str = str(valor)
+                ttk.Label(frame, text=f"{clave}:", width=20).pack(side=tk.LEFT)
+                
+                if isinstance(valor, list):
+                    valor_str = ", ".join(map(str, valor)) if valor else "Ninguno"
+                else:
+                    valor_str = str(valor)
 
-            ttk.Label(frame, text=valor_str).pack(side=tk.LEFT, padx=5)
-            ttk.Button(frame, text="Editar", 
-                      command=lambda k=clave, v=valor: self.editar_valor(k, v, self.ruta_actual)).pack(side=tk.RIGHT)
+                ttk.Label(frame, text=valor_str).pack(side=tk.LEFT, padx=5)
+                ttk.Button(frame, text="Editar", 
+                          command=lambda k=clave, v=valor: self.editar_valor(k, v, self.ruta_actual)).pack(side=tk.RIGHT)
+                ttk.Button(frame, text="Ver historial", 
+                          command=lambda k=clave: self.mostrar_historial(k)).pack(side=tk.RIGHT, padx=5)
+    
+    def mostrar_historial(self, campo):
+        if not self.ruta_actual or 'historial_cambios' not in self.extractor.datos_gif[self.ruta_actual]:
+            messagebox.showinfo("Historial", "No hay cambios registrados para este campo.")
+            return
 
+        historial = self.extractor.datos_gif[self.ruta_actual]['historial_cambios']
+        cambios_campo = [c for c in historial if c['campo'] == campo]
+
+        if not cambios_campo:
+            messagebox.showinfo("Historial", "No hay cambios registrados para este campo.")
+            return
+
+        ventana_historial = tk.Toplevel(self)
+        ventana_historial.title(f"Historial de cambios - {campo}")
+        ventana_historial.geometry("500x400")
+
+        # Crear un widget Text para mostrar el historial
+        texto_historial = tk.Text(ventana_historial, wrap=tk.WORD, padx=10, pady=10)
+        texto_historial.pack(fill=tk.BOTH, expand=True)
+
+        # Agregar scrollbar
+        scrollbar = ttk.Scrollbar(ventana_historial, command=texto_historial.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        texto_historial.config(yscrollcommand=scrollbar.set)
+
+        # Mostrar los cambios
+        for cambio in reversed(cambios_campo):
+            entrada = (
+                f"Fecha: {cambio['fecha']}\n"
+                f"Valor anterior: {cambio['valor_anterior']}\n"
+                f"Valor nuevo: {cambio['valor_nuevo']}\n"
+                f"{'-'*40}\n\n"
+            )
+            texto_historial.insert(tk.END, entrada)
+
+        texto_historial.config(state=tk.DISABLED)  # Hacer el texto de solo lectura
+    
     def editar_valor(self, clave, valor, ruta):
         if isinstance(valor, list):
             nuevo_valor = simpledialog.askstring(
