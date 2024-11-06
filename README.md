@@ -2,7 +2,7 @@
 
 **Autores:**
 - Dennys Rolando Y. Carreto Aguilon
-- María Luisa Cos Alvarez (Matrícula: 1567519)
+- María Luisa Cos Alvarez 
 
 ## Resumen del Funcionamiento del Código
 

@@ -248,6 +248,7 @@ class Aplicacion(tk.Tk):
         ttk.Button(frame_botones, text="Agregar directorio", command=self.agregar_directorio).pack(side=tk.LEFT, padx=5)
         ttk.Button(frame_botones, text="Actualizar datos", command=self.actualizar_datos).pack(side=tk.LEFT, padx=5)
         ttk.Button(frame_botones, text="Limpiar", command=self.clear_details).pack(side=tk.LEFT, padx=5)
+        ttk.Button(frame_botones, text="Acerca de", command=self.mostrar_acerca_de).pack(side=tk.RIGHT, padx=5)
 
         self.arbol.bind("<<TreeviewSelect>>", self.al_seleccionar)
         self.actualizar_arbol()
@@ -491,9 +492,9 @@ class Aplicacion(tk.Tk):
         
         ttk.Label(
             ventana_acerca,
-            text=("Esta aplicación permite extraer y visualizar\n"
-                  "información técnica de archivos GIF,\n"
-                  "incluyendo metadatos y características específicas."),
+            text=("Autores\n"
+                  "- Dennys Rolando Y. Carreto Aguilon\n"
+                  "- María Luisa Cos Alvarez"),
             justify=tk.CENTER
         ).pack(pady=20)
         
@@ -504,7 +505,7 @@ class Aplicacion(tk.Tk):
         ).pack(pady=(10, 5))
         
         caracteristicas = [
-            "• Lectura de archivos GIF sin bibliotecas externas",
+            "• Lectura de archivos GIF",
             "• Análisis recursivo de directorios",
             "• Edición de metadatos",
             "• Actualización automática de datos",
