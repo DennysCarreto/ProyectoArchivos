@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import filedialog, ttk, messagebox, simpledialog
 import json
 from datetime import datetime
+from PIL import Image, ImageTk
 
 class ExtractorGIF:
     def __init__(self):
@@ -319,8 +320,30 @@ class Aplicacion(tk.Tk):
             ]
         })
 
+        # Cargar y mostrar la animación GIF
+        image = Image.open(self.ruta_actual)
+        self.gif_frames = []
+        try:
+            while True:
+                image.seek(len(self.gif_frames))
+                frame = ImageTk.PhotoImage(image.copy())
+                self.gif_frames.append(frame)
+        except EOFError:
+            pass
+
+        self.label_imagen = ttk.Label(self.frame_interno)
+        self.label_imagen.pack(pady=10)
+        self.animate_gif()
+
         self.canvas_detalles.update_idletasks()
         self.canvas_detalles.configure(scrollregion=self.canvas_detalles.bbox("all"))
+
+    def animate_gif(self, index=0):
+        if index < len(self.gif_frames):
+            self.label_imagen.configure(image=self.gif_frames[index])
+            self.after(75, self.animate_gif, index + 1)
+        else:
+            self.after(75, self.animate_gif, 0)
 
     def mostrar_grupo_datos(self, titulo, datos):
         frame_grupo = ttk.LabelFrame(self.frame_interno, text=titulo, padding=10)
